@@ -1,0 +1,84 @@
+name: Build Cap'n Proto (No XOR)
+
+on:
+  push:
+    branches: [rs500-no-xor]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cd c++
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
+            -DBUILD_TESTING=OFF `
+            -DWITH_OPENSSL=OFF `
+            -DWITH_ZLIB=OFF
+
+      - name: Build Release
+        run: |
+          cd c++
+          cmake --build build --config Release -j
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts/bin artifacts/lib artifacts/include
+          # Binaries
+          cp c++/build/src/capnp/Release/capnp.exe artifacts/bin/
+          cp c++/build/src/capnp/Release/capnpc-c++.exe artifacts/bin/
+          cp c++/build/src/capnp/Release/capnpc-capnp.exe artifacts/bin/
+          # Libraries
+          cp c++/build/src/capnp/Release/*.lib artifacts/lib/ 2>/dev/null || true
+          cp c++/build/src/kj/Release/*.lib artifacts/lib/ 2>/dev/null || true
+          # Headers
+          cp -r c++/src/capnp artifacts/include/capnp
+          cp -r c++/src/kj artifacts/include/kj
+          # Clean non-header files from include
+          find artifacts/include -name "*.c++" -delete
+          find artifacts/include -name "*.o" -delete
+          find artifacts/include -name "CMakeLists.txt" -delete
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: capnproto-windows-x64
+          path: artifacts/
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: |
+          cd c++
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DWITH_OPENSSL=OFF \
+            -DWITH_ZLIB=OFF
+
+      - name: Build
+        run: |
+          cd c++
+          cmake --build build -j$(nproc)
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts/bin artifacts/lib
+          cp c++/build/src/capnp/capnp artifacts/bin/
+          cp c++/build/src/capnp/capnpc-c++ artifacts/bin/
+          cp c++/build/src/capnp/capnpc-capnp artifacts/bin/
+          cp c++/build/src/capnp/*.a artifacts/lib/ 2>/dev/null || true
+          cp c++/build/src/kj/*.a artifacts/lib/ 2>/dev/null || true
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: capnproto-linux-x64
+          path: artifacts/
