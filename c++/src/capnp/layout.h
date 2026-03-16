@@ -250,47 +250,48 @@ KJ_ALWAYS_INLINE(Mask<T> mask(T value, Mask<T> mask));
 template <typename T>
 KJ_ALWAYS_INLINE(T unmask(Mask<T> value, Mask<T> mask));
 
+/* RS500: XOR removed — wire stores raw application values.
+ * mask/unmask parameters kept for API compatibility but ignored. */
 template <typename T>
-inline Mask<T> mask(T value, Mask<T> mask) {
-  return static_cast<Mask<T> >(value) ^ mask;
+inline Mask<T> mask(T value, Mask<T> /* mask */) {
+  return static_cast<Mask<T> >(value);
 }
 
 template <>
-inline uint32_t mask<float>(float value, uint32_t mask) {
+inline uint32_t mask<float>(float value, uint32_t /* mask */) {
 #if CAPNP_CANONICALIZE_NAN
   if (value != value) {
-    return 0x7fc00000u ^ mask;
+    return 0x7fc00000u;
   }
 #endif
 
   uint32_t i;
   static_assert(sizeof(i) == sizeof(value), "float is not 32 bits?");
   memcpy(&i, &value, sizeof(value));
-  return i ^ mask;
+  return i;
 }
 
 template <>
-inline uint64_t mask<double>(double value, uint64_t mask) {
+inline uint64_t mask<double>(double value, uint64_t /* mask */) {
 #if CAPNP_CANONICALIZE_NAN
   if (value != value) {
-    return 0x7ff8000000000000ull ^ mask;
+    return 0x7ff8000000000000ull;
   }
 #endif
 
   uint64_t i;
   static_assert(sizeof(i) == sizeof(value), "double is not 64 bits?");
   memcpy(&i, &value, sizeof(value));
-  return i ^ mask;
+  return i;
 }
 
 template <typename T>
-inline T unmask(Mask<T> value, Mask<T> mask) {
-  return static_cast<T>(value ^ mask);
+inline T unmask(Mask<T> value, Mask<T> /* mask */) {
+  return static_cast<T>(value);
 }
 
 template <>
-inline float unmask<float>(uint32_t value, uint32_t mask) {
-  value ^= mask;
+inline float unmask<float>(uint32_t value, uint32_t /* mask */) {
   float result;
   static_assert(sizeof(result) == sizeof(value), "float is not 32 bits?");
   memcpy(&result, &value, sizeof(value));
@@ -298,8 +299,7 @@ inline float unmask<float>(uint32_t value, uint32_t mask) {
 }
 
 template <>
-inline double unmask<double>(uint64_t value, uint64_t mask) {
-  value ^= mask;
+inline double unmask<double>(uint64_t value, uint64_t /* mask */) {
   double result;
   static_assert(sizeof(result) == sizeof(value), "double is not 64 bits?");
   memcpy(&result, &value, sizeof(value));
